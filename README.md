@@ -28,20 +28,20 @@ go-tasker/
 
 ## 里程碑路线图
 
-1) **Phase 0：骨架与规范**
-   - 建立目录、基础路由（已完成 `/ping`）。
+1. **Phase 0：骨架与规范**
+   - 建立目录、基础路由。
    - 统一响应/错误结构，约定 HTTP 状态码语义。
-2) **Phase 1：Task 模块（内存版）**
+2. **Phase 1：Task 模块（内存版）**
    - Task 领域模型与 Service interface。
    - Gin handler 实现 CRUD，业务与 HTTP 解耦。
-3) **Phase 2：持久化与 Repository**
+3. **Phase 2：持久化与 Repository**
    - 引入 GORM/SQL，`core` 通过 Repository 接口访问数据。
    - `infra/db` 提供连接管理与具体实现。
-4) **Phase 3：User/Auth**
+4. **Phase 3：User/Auth**
    - 注册/登录、JWT 中间件，Task 绑定用户。
-5) **Phase 4：工程化提升**
+5. **Phase 4：工程化提升**
    - 配置管理（viper）、结构化日志（zap/logrus）、Swagger、Dockerfile/docker-compose。
-6) **Phase 5：可选微服务演进**
+6. **Phase 5：可选微服务演进**
    - 按 `core/task`、`core/user` 边界拆分，现有接口与基础设施可复用。
 
 ## 开发协作规范
