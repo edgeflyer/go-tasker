@@ -3,9 +3,11 @@ package main
 import(
 	"net/http"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"tasker/pkg/response"
 	"tasker/core/task"
 	"tasker/api/handler"
+	"tasker/infra/db"
 	
 )
 
@@ -28,10 +30,19 @@ func main() {
 		response.Error(c, http.StatusBadRequest, "DEMO_ERROR", "this is a demo error")
 	})
 
-	// task模块挂载
-	taskSvc := task.NewMemoryService()
+	// 初始化数据库
+	var gormDB *gorm.DB = db.NewPostgresDB()
+
+	// 初始化 Repository Service Handler
+	taskRepo := db.NewTaskRepository(gormDB)
+	taskSvc := task.NewService(taskRepo)
 	taskHandler := handler.NewTaskHandler(taskSvc)
 	taskHandler.RegisterRoutes(r)
+
+	// // task模块挂载（内存版）
+	// taskSvc := task.NewMemoryService()
+	// taskHandler := handler.NewTaskHandler(taskSvc)
+	// taskHandler.RegisterRoutes(r)
 	
 	r.Run(":8080")
 }

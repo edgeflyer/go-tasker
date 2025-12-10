@@ -147,3 +147,69 @@ func (s *memoryService) DeleteTask(ctx context.Context, id int64) error {
 	delete(s.tasks, id)
 	return nil
 }
+
+// Repository实现==========================
+type service struct {
+	repo Respository
+}
+
+func NewService(repo Respository) Service {
+	return &service{repo: repo}
+}
+
+// 实现Service方法
+func (s *service) CreateTask(ctx context.Context, in CreateTaskInput) (*Task, error) {
+	if in.Title == "" {
+		return nil, apperror.New("INVALID_TITLE", "title is required")
+	}
+
+	now := time.Now()
+	t := &Task{
+		Title:       in.Title,
+		Description: in.Description,
+		Status:      StatusPending,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	if err := s.repo.Create(ctx, t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func (s *service) GetTask(ctx context.Context, id int64) (*Task, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s *service) ListTasks(ctx context.Context, filter ListTaskerFilter) ([]*Task, error) {
+	return s.repo.List(ctx)
+}
+
+func (s *service) UpdateTask(ctx context.Context, id int64, in UpdateTaskInput) (*Task, error) {
+	if in.Title == "" {
+		return nil, apperror.New("INVALID_TITLE", "title is required")
+	}
+	if in.Status != StatusPending && in.Status != StatusCompleted {
+		return nil, apperror.New("INVALID_STATUS", "status must be 'pending' or 'completed'")
+	}
+
+	t, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	t.Title = in.Title
+	t.Description = in.Description
+	t.Status = in.Status
+	t.UpdatedAt = time.Now()
+
+	if err := s.repo.Update(ctx, t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func (s *service) DeleteTask(ctx context.Context, id int64) error {
+	return s.repo.Delete(ctx, id)
+}
