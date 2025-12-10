@@ -8,6 +8,7 @@ import(
 	"tasker/core/task"
 	"tasker/pkg/apperror"
 	"tasker/pkg/response"
+	"tasker/api/middleware"
 )
 
 type TaskHandler struct {
@@ -21,6 +22,7 @@ func NewTaskHandler(svc task.Service) * TaskHandler {
 // 路由注册
 func (h *TaskHandler) RegisterRoutes(r *gin.Engine) {
 	g := r.Group("/tasks")
+	g.Use(middleware.AuthMiddleware())
 	{
 		g.POST("", h.CreateTask)
 		g.GET("", h.ListTasks)
@@ -32,13 +34,18 @@ func (h *TaskHandler) RegisterRoutes(r *gin.Engine) {
 
 // 具体handler
 func (h *TaskHandler) CreateTask(c *gin.Context) {
+	userID, ok := getUserIDFromContext(c)
+	if !ok {
+		return
+	}
+
 	var in task.CreateTaskInput
 	if err := c.ShouldBindJSON(&in); err != nil {
 		response.Error(c, http.StatusBadRequest, "INVALID_JSON", "invalid JSON body")
 		return
 	}
 
-	t, err := h.svc.CreateTask(context.Background(), in)
+	t, err := h.svc.CreateTask(context.Background(), userID, in)
 	if err != nil {
 		if appErr, ok := apperror.IsAppError(err); ok {
 			// 业务错误，一般是400
@@ -54,7 +61,11 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) ListTasks(c *gin.Context) {
-	tasks, err := h.svc.ListTasks(context.Background(), task.ListTaskerFilter{})
+	userID, ok := getUserIDFromContext(c)
+	if !ok {
+		return
+	}
+	tasks, err := h.svc.ListTasks(context.Background(), userID, task.ListTaskerFilter{})
 	if err !=nil {
 		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 		return
@@ -63,12 +74,17 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 }
 
 func (h *TaskHandler) GetTask(c *gin.Context) {
+	userID, ok := getUserIDFromContext(c)
+	if !ok {
+		return
+	}
+
 	id, ok := parseIDParam(c)
 	if !ok {
 		return
 	}
 
-	t, err := h.svc.GetTask(context.Background(), id)
+	t, err := h.svc.GetTask(context.Background(), userID, id)
 	if err != nil {
 		if appErr, ok := apperror.IsAppError(err); ok && appErr.Code == "TASK_NOT_FOUND" {
 			response.Error(c, http.StatusNotFound, appErr.Code, appErr.Message)
@@ -81,6 +97,11 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
+	userID, ok := getUserIDFromContext(c)
+	if !ok {
+		return
+	}
+
 	id, ok := parseIDParam(c)
 	if !ok {
 		return
@@ -92,7 +113,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	t, err := h.svc.UpdateTask(context.Background(), id, in)
+	t, err := h.svc.UpdateTask(context.Background(), userID, id, in)
 	if err != nil {
 		if appErr, ok := apperror.IsAppError(err); ok {
 			switch appErr.Code {
@@ -112,13 +133,18 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
+	userID, ok := getUserIDFromContext(c)
+	if !ok {
+		return
+	}
+
 	id, ok := parseIDParam(c)
 	if !ok {
 		return
 	}
 
-	if err := h.svc.DeleteTask(context.Background(), id); err != nil {
-		if appErr, ok := apperror.IsAppError(err); ok && appErr.Code == "TASL_NOT_FOUND" {
+	if err := h.svc.DeleteTask(context.Background(), userID, id); err != nil {
+		if appErr, ok := apperror.IsAppError(err); ok && appErr.Code == "TASK_NOT_FOUND" {
 			response.Error(c, http.StatusNotFound, appErr.Code, appErr.Message)
 			return
 		}
@@ -139,4 +165,18 @@ func parseIDParam(c *gin.Context) (int64, bool) {
 		return 0, false
 	}
 	return id ,true
+}
+
+func getUserIDFromContext(c *gin.Context) (int64, bool) {
+	v, exists := c.Get("userID")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "user not authenticated")
+		return 0, false
+	}
+	userID, ok := v.(int64)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid user id in context")
+		return 0, false
+	}
+	return userID, true
 }
