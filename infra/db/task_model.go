@@ -8,6 +8,7 @@ import (
 // TaskModel是存到postgres中的结构
 type TaskModel struct {
 	ID int64 `gorm:"primaryKey;autoIncrement"`
+	UserID int64 `gorm:"not null;index"`
 	Title string `gorm:"type:varchar(255);not null"`
 	Description string `gorm:"type:text"`
 	Status string `gorm:"type:varchar(20);not null;index"`

@@ -4,9 +4,10 @@ package db
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"tasker/core/task"
 	"tasker/pkg/apperror"
+
+	"gorm.io/gorm"
 )
 
 type TaskRepository struct {
@@ -22,6 +23,7 @@ func NewTaskRepository(db *gorm.DB) *TaskRepository {
 func toDomain(m *TaskModel) *task.Task {
 	return &task.Task{
 		ID:          m.ID,
+		UserID: m.UserID,
 		Title:       m.Title,
 		Description: m.Description,
 		Status:      task.Status(m.Status),
@@ -33,6 +35,7 @@ func toDomain(m *TaskModel) *task.Task {
 func toModel(t *task.Task) *TaskModel {
 	return &TaskModel{
 		ID:          t.ID,
+		UserID: t.UserID,
 		Title:       t.Title,
 		Description: t.Description,
 		Status:      string(t.Status),
@@ -52,9 +55,9 @@ func (r *TaskRepository) Create(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-func (r *TaskRepository) GetByID(ctx context.Context, id int64) (*task.Task, error) {
+func (r *TaskRepository) GetByID(ctx context.Context, userID, id int64) (*task.Task, error) {
 	var m TaskModel
-	tx := r.db.WithContext(ctx).First(&m, id)
+	tx := r.db.WithContext(ctx).Where("id = ? AND user_id = ?", id, userID).First(&m)
 	if tx.Error != nil {
 		if tx.Error == gorm.ErrRecordNotFound {
 			return nil, apperror.New("TASK_NOT_FOUND", "task not found")
@@ -64,9 +67,9 @@ func (r *TaskRepository) GetByID(ctx context.Context, id int64) (*task.Task, err
 	return toDomain(&m), nil
 }
 
-func (r *TaskRepository) List(ctx context.Context) ([]*task.Task, error) {
+func (r *TaskRepository) List(ctx context.Context, userID int64) ([]*task.Task, error) {
 	var models []TaskModel
-	if err := r.db.WithContext(ctx).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, apperror.New("DB_ERROR", "failed to list tasks")
 	}
 
@@ -80,14 +83,25 @@ func (r *TaskRepository) List(ctx context.Context) ([]*task.Task, error) {
 
 func (r *TaskRepository) Update(ctx context.Context, t *task.Task) error {
 	m := toModel(t)
-	if err := r.db.WithContext(ctx).Save(m).Error; err != nil {
+	tx := r.db.WithContext(ctx).Model(&TaskModel{}).Where("id = ? AND user_id = ?", t.ID, t.UserID).Updates(map[string]any{
+		"title": m.Title,
+		"description": m.Description,
+		"status": m.Status,
+		"updated_at": m.UpdatedAt,
+	})
+	if tx.Error != nil {
 		return apperror.New("DB_ERROR", "failed to update task")
+	}
+	if tx.RowsAffected == 0 {
+		return apperror.New("TASK_NOT_FOUND", "task not found")
 	}
 	return nil
 }
 
-func (r *TaskRepository) Delete(ctx context.Context, id int64) error {
-	tx := r.db.WithContext(ctx).Delete(&TaskModel{}, id)
+func (r *TaskRepository) Delete(ctx context.Context, userID, id int64) error {
+	tx := r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", id, userID).
+		Delete(&TaskModel{})
 	if tx.Error != nil {
 		return apperror.New("DB_ERROR", "failed to delete task")
 	}

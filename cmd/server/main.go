@@ -8,6 +8,7 @@ import(
 	"tasker/core/task"
 	"tasker/api/handler"
 	"tasker/infra/db"
+	"tasker/core/user"
 	
 )
 
@@ -32,6 +33,12 @@ func main() {
 
 	// 初始化数据库
 	var gormDB *gorm.DB = db.NewPostgresDB()
+
+	// User相关
+	userRepo := db.NewUserRepository(gormDB)
+	userSvc := user.NewService(userRepo)
+	userHandler := handler.NewAuthHandler(userSvc)
+	userHandler.RegisterRoutes(r)
 
 	// 初始化 Repository Service Handler
 	taskRepo := db.NewTaskRepository(gormDB)
