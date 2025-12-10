@@ -2,7 +2,7 @@ package apperror
 
 import "errors"
 
-// 应用错误类型，包含一个月湖错误码和对外提示
+// 应用错误类型，包含一个业务错误码和对外提示
 type AppError struct {
 	Code string
 	Message string

@@ -30,7 +30,7 @@ type CreateTaskInput struct {
 	Description string `json:"description"`
 }
 
-// 更新任务时用的入参（目前设置的比填)
+// 更新任务时用的入参（目前设置的必填)
 type UpdateTaskInput struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -115,7 +115,7 @@ type Service interface {
 
 // func (s *memoryService) UpdateTask(ctx context.Context, id int64, in UpdateTaskInput) (*Task, error) {
 // 	if in.Title == "" {
-// 		return nil, apperror.New("INVALID_TITLE", "title is reuired")
+// 		return nil, apperror.New("INVALID_TITLE", "title is required")
 // 	}
 // 	if !validateStatus(in.Status) {
 // 		return nil, apperror.New("INVALID_STATUS", "status must be 'pending' or 'completed'")
@@ -143,7 +143,7 @@ type Service interface {
 // 	defer s.mu.Unlock()
 
 // 	if _, ok := s.tasks[id]; !ok {
-// 		return apperror.New("TASK_NOT_FOUD", "task not found")
+// 		return apperror.New("TASK_NOT_FOUND", "task not found")
 // 	}
 // 	delete(s.tasks, id)
 // 	return nil
@@ -151,10 +151,10 @@ type Service interface {
 
 // Repository实现==========================
 type service struct {
-	repo Respository
+	repo Repository
 }
 
-func NewService(repo Respository) Service {
+func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
 

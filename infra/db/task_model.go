@@ -1,5 +1,5 @@
 package db
-// TAsk 的DB模型
+// Task 的DB模型
 
 import (
 	"time"

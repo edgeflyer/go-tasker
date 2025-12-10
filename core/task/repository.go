@@ -5,7 +5,7 @@ import (
 )
 
 // Repository抽象了对task的 持久化操作
-type Respository interface {
+type Repository interface {
 	Create(ctx context.Context, t *Task) error
 	GetByID(ctx context.Context, userID, id int64) (*Task, error)
 	List(ctx context.Context, userID int64) ([]*Task, error)
