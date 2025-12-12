@@ -1,19 +1,41 @@
 package main
 
-import(
+import (
 	"net/http"
+	"tasker/api/handler"
+	"tasker/core/task"
+	"tasker/core/user"
+	"tasker/infra/db"
+	"tasker/pkg/response"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"tasker/pkg/response"
-	"tasker/core/task"
-	"tasker/api/handler"
-	"tasker/infra/db"
-	"tasker/core/user"
-	
 )
 
 func main() {
 	r := gin.Default()
+
+	r.Use(func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		// 开发阶段：只允许你的前端地址
+		if origin == "http://localhost:5173" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Vary", "Origin")
+			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		// 关键：预检请求直接返回
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
 
 	r.GET("/health", func(c *gin.Context) {
 		response.Success(c, gin.H{

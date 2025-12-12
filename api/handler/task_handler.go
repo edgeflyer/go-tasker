@@ -1,21 +1,21 @@
 package handler
 
-import(
+import (
 	"context"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-	"github.com/gin-gonic/gin"
+	"tasker/api/middleware"
 	"tasker/core/task"
 	"tasker/pkg/apperror"
 	"tasker/pkg/response"
-	"tasker/api/middleware"
 )
 
 type TaskHandler struct {
 	svc task.Service
 }
 
-func NewTaskHandler(svc task.Service) * TaskHandler {
+func NewTaskHandler(svc task.Service) *TaskHandler {
 	return &TaskHandler{svc: svc}
 }
 
@@ -65,8 +65,34 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	if !ok {
 		return
 	}
-	tasks, err := h.svc.ListTasks(context.Background(), userID, task.ListTaskerFilter{})
-	if err !=nil {
+	status := c.Query("status")
+	if status != "" && status != string(task.StatusPending) && status != string(task.StatusCompleted) && status != "all" {
+		response.Error(c, http.StatusBadRequest, "INVALID_STATUS", "status must be pending/completed/all")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	sort := c.DefaultQuery("sort", "created_desc")
+	query := c.Query("q")
+
+	filter := task.ListTaskerFilter{
+		Status:   task.Status(status),
+		Page:     page,
+		PageSize: pageSize,
+		Query:    query,
+		Sort:     sort,
+	}
+	if status == "all" {
+		filter.Status = ""
+	}
+
+	tasks, err := h.svc.ListTasks(context.Background(), userID, filter)
+	if err != nil {
+		if appErr, ok := apperror.IsAppError(err); ok && (appErr.Code == "INVALID_STATUS" || appErr.Code == "INVALID_SORT") {
+			response.Error(c, http.StatusBadRequest, appErr.Code, appErr.Message)
+			return
+		}
 		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 		return
 	}
@@ -156,15 +182,15 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	response.Success(c, gin.H{"message": "task deleted"})
 }
 
-//工具函数：解析路径参数id
+// 工具函数：解析路径参数id
 func parseIDParam(c *gin.Context) (int64, bool) {
 	idStr := c.Param("id")
-	id ,err := strconv.ParseInt(idStr, 10, 64)
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
 		response.Error(c, http.StatusBadRequest, "INVALID_ID", "id must be a positive integer")
 		return 0, false
 	}
-	return id ,true
+	return id, true
 }
 
 func getUserIDFromContext(c *gin.Context) (int64, bool) {

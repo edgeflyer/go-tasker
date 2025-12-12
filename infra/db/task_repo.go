@@ -18,12 +18,11 @@ func NewTaskRepository(db *gorm.DB) *TaskRepository {
 	return &TaskRepository{db: db}
 }
 
-
 // model和domain转换
 func toDomain(m *TaskModel) *task.Task {
 	return &task.Task{
 		ID:          m.ID,
-		UserID: m.UserID,
+		UserID:      m.UserID,
 		Title:       m.Title,
 		Description: m.Description,
 		Status:      task.Status(m.Status),
@@ -35,7 +34,7 @@ func toDomain(m *TaskModel) *task.Task {
 func toModel(t *task.Task) *TaskModel {
 	return &TaskModel{
 		ID:          t.ID,
-		UserID: t.UserID,
+		UserID:      t.UserID,
 		Title:       t.Title,
 		Description: t.Description,
 		Status:      string(t.Status),
@@ -67,27 +66,63 @@ func (r *TaskRepository) GetByID(ctx context.Context, userID, id int64) (*task.T
 	return toDomain(&m), nil
 }
 
-func (r *TaskRepository) List(ctx context.Context, userID int64) ([]*task.Task, error) {
+func (r *TaskRepository) List(ctx context.Context, userID int64, filter task.ListTaskerFilter) (*task.ListResult, error) {
+	db := r.db.WithContext(ctx).Model(&TaskModel{}).Where("user_id = ?", userID)
+	if filter.Status != "" {
+		db = db.Where("status = ?", string(filter.Status))
+	}
+	if filter.Query != "" {
+		q := "%" + filter.Query + "%"
+		db = db.Where("title ILIKE ? OR description ILIKE ?", q, q)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, apperror.New("DB_ERROR", "failed to count tasks")
+	}
+
+	page := filter.Page
+	if page <= 0 {
+		page = 1
+	}
+	pageSize := filter.PageSize
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+
 	var models []TaskModel
-	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
+	order := "created_at DESC"
+	switch filter.Sort {
+	case "created_asc":
+		order = "created_at ASC"
+	case "status":
+		order = "status ASC, created_at DESC"
+	}
+
+	if err := db.Order(order).Limit(pageSize).Offset((page - 1) * pageSize).Find(&models).Error; err != nil {
 		return nil, apperror.New("DB_ERROR", "failed to list tasks")
 	}
 
-	result := make([]*task.Task, 0, len(models))
+	items := make([]*task.Task, 0, len(models))
 	for _, m := range models {
-		t := toDomain(&m)
-		result = append(result, t)
+		items = append(items, toDomain(&m))
 	}
-	return result, nil
+
+	return &task.ListResult{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
 }
 
 func (r *TaskRepository) Update(ctx context.Context, t *task.Task) error {
 	m := toModel(t)
 	tx := r.db.WithContext(ctx).Model(&TaskModel{}).Where("id = ? AND user_id = ?", t.ID, t.UserID).Updates(map[string]any{
-		"title": m.Title,
+		"title":       m.Title,
 		"description": m.Description,
-		"status": m.Status,
-		"updated_at": m.UpdatedAt,
+		"status":      m.Status,
+		"updated_at":  m.UpdatedAt,
 	})
 	if tx.Error != nil {
 		return apperror.New("DB_ERROR", "failed to update task")
