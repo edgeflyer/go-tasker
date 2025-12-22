@@ -26,6 +26,11 @@ func toDomain(m *TaskModel) *task.Task {
 		Title:       m.Title,
 		Description: m.Description,
 		Status:      task.Status(m.Status),
+
+
+		DueDate: m.DueData,
+		Priority: m.Priority,
+		GroupID: m.GroupID,
 		CreatedAt:   m.CreatedAt,
 		UpdatedAt:   m.UpdatedAt,
 	}
@@ -38,6 +43,9 @@ func toModel(t *task.Task) *TaskModel {
 		Title:       t.Title,
 		Description: t.Description,
 		Status:      string(t.Status),
+		DueData: t.DueDate,
+		Priority: t.Priority,
+		GroupID: t.GroupID,
 		CreatedAt:   t.CreatedAt,
 		UpdatedAt:   t.UpdatedAt,
 	}

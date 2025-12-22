@@ -16,25 +16,34 @@ func main() {
 	r := gin.Default()
 
 	r.Use(func(c *gin.Context) {
-		origin := c.GetHeader("Origin")
-		// 开发阶段：只允许你的前端地址
-		if origin == "http://localhost:5173" {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Vary", "Origin")
-			c.Header("Access-Control-Allow-Credentials", "true")
-		}
+	origin := c.GetHeader("Origin")
 
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	allowed := map[string]bool{
+		"http://localhost:5173":         true,
+		"http://8.213.208.227:15173":    true,
+		"http://nullix.top":             true,
+		"http://www.nullix.top":         true,
+		"https://nullix.top":            true,
+		"https://www.nullix.top":        true,
+	}
 
-		// 关键：预检请求直接返回
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
+	if allowed[origin] {
+		c.Header("Access-Control-Allow-Origin", origin)
+		c.Header("Vary", "Origin")
+		c.Header("Access-Control-Allow-Credentials", "true")
+	}
 
-		c.Next()
-	})
+	c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+	if c.Request.Method == "OPTIONS" {
+		c.AbortWithStatus(204)
+		return
+	}
+
+	c.Next()
+})
+
 
 
 	r.GET("/health", func(c *gin.Context) {

@@ -20,14 +20,30 @@ type Task struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Status      Status    `json:"status"`
+
+	DueDate *time.Time `json:"due_date"`
+	Priority string `json:"priority"`
+	GroupID *int64 `json:"group_id"`
+
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type Group struct {
+	ID int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+	Name string `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // 创建任务时用的入参
 type CreateTaskInput struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	DueDate *time.Time `json:"due_date"`
+	Priority string `json:"priority"`
+	GroupID *int64 `json:"group_id"`
 }
 
 // 更新任务时用的入参（目前设置的必填)
@@ -61,105 +77,6 @@ type Service interface {
 	DeleteTask(ctx context.Context, userID int64, id int64) error
 }
 
-// // 内存实现版(用map存任务，用锁保证并发安全)
-// type memoryService struct {
-// 	mu sync.RWMutex
-// 	seq int64
-// 	tasks map[int64]*Task
-// }
-
-// func NewMemoryService() Service {
-// 	return &memoryService{
-// 		tasks: make(map[int64]*Task),
-// 	}
-// }
-
-// // 工具函数
-// func validateStatus(status Status) bool {
-// 	return status == StatusPending || status == StatusCompleted
-// }
-
-// // Service实现
-// func (s *memoryService) CreateTask(ctx context.Context, in CreateTaskInput) (*Task, error) {
-// 	if in.Title == "" {
-// 		return nil, apperror.New("INVALID_TITLE", "title is required")
-// 	}
-
-// 	now := time.Now()
-
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-
-// 	s.seq++
-// 	task := &Task{
-// 		ID: s.seq,
-// 		Title: in.Title,
-// 		Description: in.Description,
-// 		Status: StatusPending,
-// 		CreatedAt: now,
-// 		UpdatedAt: now,
-// 	}
-
-// 	s.tasks[task.ID] = task
-// 	return task, nil
-// }
-
-// func (s *memoryService) GetTask(ctx context.Context,id int64) (*Task, error) {
-// 	s.mu.RLock()
-// 	defer s.mu.RUnlock()
-// 	t, ok := s.tasks[id]
-// 	if !ok {
-// 		return nil, apperror.New("TASK_NOT_FOUND", "task not found")
-// 	}
-// 	return t, nil
-// }
-
-// func (s *memoryService) ListTasks(ctx context.Context, filter ListTaskerFilter) ([]*Task, error) {
-// 	s.mu.RLock()
-// 	defer s.mu.RUnlock()
-// 	result := make([]*Task, 0, len(s.tasks))
-// 	for _, t := range s.tasks {
-// 		result = append(result, t)
-// 	}
-// 	return result, nil
-// }
-
-// func (s *memoryService) UpdateTask(ctx context.Context, id int64, in UpdateTaskInput) (*Task, error) {
-// 	if in.Title == "" {
-// 		return nil, apperror.New("INVALID_TITLE", "title is required")
-// 	}
-// 	if !validateStatus(in.Status) {
-// 		return nil, apperror.New("INVALID_STATUS", "status must be 'pending' or 'completed'")
-// 	}
-
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-
-// 	t, ok := s.tasks[id]
-// 	if !ok {
-// 		return nil, apperror.New("TASK_NOT_FOUND", "task not found")
-// 	}
-
-// 	t.Title = in.Title
-// 	t.Description = in.Description
-// 	t.Status = in.Status
-// 	t.UpdatedAt = time.Now()
-
-// 	return t, nil
-// }
-
-// func (s *memoryService) DeleteTask(ctx context.Context, id int64) error {
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-
-// 	if _, ok := s.tasks[id]; !ok {
-// 		return apperror.New("TASK_NOT_FOUND", "task not found")
-// 	}
-// 	delete(s.tasks, id)
-// 	return nil
-// }
-
-// Repository实现==========================
 type service struct {
 	repo Repository
 }
@@ -174,12 +91,22 @@ func (s *service) CreateTask(ctx context.Context, userID int64, in CreateTaskInp
 		return nil, apperror.New("INVALID_TITLE", "title is required")
 	}
 
+	if in.Priority == "" {
+		in.Priority = "low"
+	}
+
+	// 确认分组属于用户
+	exist, err := s.repo.GetGroupByID(ctx, userID)
+
 	now := time.Now()
 	t := &Task{
 		UserID:      userID,
 		Title:       in.Title,
 		Description: in.Description,
 		Status:      StatusPending,
+		DueDate: in.DueDate,
+		Priority: in.Priority,
+		GroupID: in.GroupID,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
