@@ -5,6 +5,9 @@ import (
 	// "sync"
 	"tasker/pkg/apperror"
 	"time"
+
+	// 注入group service
+	"tasker/core/group"
 )
 
 type Status string
@@ -79,10 +82,11 @@ type Service interface {
 
 type service struct {
 	repo Repository
+	groupSvc group.Service
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, groupSvc group.Service) Service {
+	return &service{repo: repo, groupSvc: groupSvc}
 }
 
 // 实现Service方法
@@ -95,8 +99,24 @@ func (s *service) CreateTask(ctx context.Context, userID int64, in CreateTaskInp
 		in.Priority = "low"
 	}
 
+	if in.GroupID == nil {
+
+		// TODO：查询默认分组是否存在，不存在再查询，如果存在，直接把in.GroupID设置为默认分组的id
+
+		g, err := s.groupSvc.CreateGroup(ctx, userID, "默认")
+		if err !=nil {
+			return nil, err
+		}
+
+		in.GroupID = &g.ID
+	}
+
 	// 确认分组属于用户
-	exist, err := s.repo.GetByID(ctx, userID, *in.GroupID)
+	_, err := s.groupSvc.GetGroup(ctx, userID, *in.GroupID)
+	if err!= nil {
+		// 向上抛出（groupService已经处理好了错误）
+		return nil, err
+	}
 
 	now := time.Now()
 	t := &Task{

@@ -47,3 +47,13 @@ func (r *GroupRepository) GetByID(ctx context.Context, userID int64, ID int64) (
 	}
 	return groupToDomain(&m), nil
 }
+
+func (r *GroupRepository) Create(ctx context.Context, group *group.Group) error {
+	m := groupToModel(group)
+	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+		return apperror.New("DB_ERROR", "failed to create group")
+	}
+
+	group.ID = m.ID
+	return nil
+}

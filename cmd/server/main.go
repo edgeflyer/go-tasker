@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"tasker/api/handler"
+	"tasker/core/group"
 	"tasker/core/task"
 	"tasker/core/user"
 	"tasker/infra/db"
@@ -65,6 +66,10 @@ func main() {
 	// 初始化数据库
 	var gormDB *gorm.DB = db.NewPostgresDB()
 
+	// 初始化group service
+	groupRepo := db.NewGroupRepository(gormDB)
+	groupSvc := group.NewService(groupRepo)
+
 	// User相关
 	userRepo := db.NewUserRepository(gormDB)
 	userSvc := user.NewService(userRepo)
@@ -73,7 +78,7 @@ func main() {
 
 	// 初始化 Repository Service Handler
 	taskRepo := db.NewTaskRepository(gormDB)
-	taskSvc := task.NewService(taskRepo)
+	taskSvc := task.NewService(taskRepo, groupSvc)
 	taskHandler := handler.NewTaskHandler(taskSvc)
 	taskHandler.RegisterRoutes(r)
 
