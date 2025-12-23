@@ -38,7 +38,7 @@ func groupToModel(t *group.Group) *GroupModel {
 
 func (r *GroupRepository) GetByID(ctx context.Context, userID int64, ID int64) (*group.Group, error) {
 	var m GroupModel
-	tx := r.db.WithContext(ctx).Where("userID = ? and id = ?", userID, ID).First(&m)
+	tx := r.db.WithContext(ctx).Where("user_id = ? and id = ?", userID, ID).First(&m)
 	if tx.Error != nil {
 		if tx.Error == gorm.ErrRecordNotFound {
 			return nil, apperror.New("GROUP_NOT_FOUND", "group not found")
@@ -56,4 +56,16 @@ func (r *GroupRepository) Create(ctx context.Context, group *group.Group) error 
 
 	group.ID = m.ID
 	return nil
+}
+
+func (r *GroupRepository) GetByUserIDAndName(ctx context.Context, userID int64, name string) (*group.Group, error) {
+	var m GroupModel
+	tx := r.db.WithContext(ctx).Where("user_id = ? and name = ?", userID, name).First(&m)
+	if tx.Error != nil {
+		if tx.Error == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, apperror.New("DB_ERROR", "failed to get group")
+	}
+	return groupToDomain(&m), nil
 }

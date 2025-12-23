@@ -21,6 +21,7 @@ type service struct {
 type Service interface {
 	GetGroup(ctx context.Context, userID int64, ID int64) (*Group, error)
 	CreateGroup(ctx context.Context, userID int64, name string) (*Group, error)
+	FindGroupByName(ctx context.Context, userID int64, name string) (*Group, error)
 }
 
 func NewService(repo Repository) Service {
@@ -53,6 +54,8 @@ func (s *service) CreateGroup(ctx context.Context, userID int64, name string) (*
 	}
 
 	return g, nil
+}
 
-	
+func (s *service) FindGroupByName(ctx context.Context, userID int64, name string) (*Group, error) {
+	return s.repo.GetByUserIDAndName(ctx, userID, name)
 }

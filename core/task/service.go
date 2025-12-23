@@ -102,13 +102,22 @@ func (s *service) CreateTask(ctx context.Context, userID int64, in CreateTaskInp
 	if in.GroupID == nil {
 
 		// TODO：查询默认分组是否存在，不存在再查询，如果存在，直接把in.GroupID设置为默认分组的id
-
-		g, err := s.groupSvc.CreateGroup(ctx, userID, "默认")
-		if err !=nil {
+		exists, err := s.groupSvc.FindGroupByName(ctx, userID, "默认")
+		if err != nil {
 			return nil, err
 		}
+		//默认分组存在，直接创建
+		if exists != nil {
+			in.GroupID = &exists.ID
+		} else { // 默认分组不存在，先创建
+			g, err := s.groupSvc.CreateGroup(ctx, userID, "默认")
+			if err !=nil {
+				return nil, err
+			}
 
-		in.GroupID = &g.ID
+			in.GroupID = &g.ID
+		}
+		
 	}
 
 	// 确认分组属于用户
