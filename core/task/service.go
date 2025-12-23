@@ -15,35 +15,35 @@ const (
 )
 
 type Task struct {
-	ID          int64     `json:"id"`
-	UserID      int64     `json:"user_id"` // 在写完auth之后新增：任务属于哪个用户
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Status      Status    `json:"status"`
+	ID          int64  `json:"id"`
+	UserID      int64  `json:"user_id"` // 在写完auth之后新增：任务属于哪个用户
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Status      Status `json:"status"`
 
-	DueDate *time.Time `json:"due_date"`
-	Priority string `json:"priority"`
-	GroupID *int64 `json:"group_id"`
+	DueDate  *time.Time `json:"due_date"`
+	Priority string     `json:"priority"`
+	GroupID  *int64     `json:"group_id"`
 
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Group struct {
-	ID int64 `json:"id"`
-	UserID int64 `json:"user_id"`
-	Name string `json:"name"`
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"user_id"`
+	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // 创建任务时用的入参
 type CreateTaskInput struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	DueDate *time.Time `json:"due_date"`
-	Priority string `json:"priority"`
-	GroupID *int64 `json:"group_id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	DueDate     *time.Time `json:"due_date"`
+	Priority    string     `json:"priority"`
+	GroupID     *int64     `json:"group_id"`
 }
 
 // 更新任务时用的入参（目前设置的必填)
@@ -96,7 +96,7 @@ func (s *service) CreateTask(ctx context.Context, userID int64, in CreateTaskInp
 	}
 
 	// 确认分组属于用户
-	exist, err := s.repo.GetGroupByID(ctx, userID)
+	exist, err := s.repo.GetByID(ctx, userID, *in.GroupID)
 
 	now := time.Now()
 	t := &Task{
@@ -104,9 +104,9 @@ func (s *service) CreateTask(ctx context.Context, userID int64, in CreateTaskInp
 		Title:       in.Title,
 		Description: in.Description,
 		Status:      StatusPending,
-		DueDate: in.DueDate,
-		Priority: in.Priority,
-		GroupID: in.GroupID,
+		DueDate:     in.DueDate,
+		Priority:    in.Priority,
+		GroupID:     in.GroupID,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
